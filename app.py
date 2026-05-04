@@ -141,7 +141,7 @@ else:
         
         with st.expander("➕ 새 덱(단어장) 만들기", expanded=not st.session_state.decks):
             with st.form("new_deck_form", clear_on_submit=True):
-                new_deck_name = st.text_input("덱 이름 (예: TORFL 러시아어, 학교 내신 영어)")
+                new_deck_name = st.text_input("덱 이름 (예: 영어 기말고사 단어장, 영독작 수행 단어장)")
                 if st.form_submit_button("생성하기"):
                     if new_deck_name:
                         try:
