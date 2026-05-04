@@ -130,12 +130,15 @@ else:
         # 1. 덱 만들기
         with st.expander("➕ 새 덱(단어장) 만들기", expanded=not st.session_state.decks):
             with st.form("new_deck_form", clear_on_submit=True):
-                new_deck_name = st.text_input("덱 이름 (예: TORFL 러시아어, 학교 내신 영어)")
-                if st.form_submit_button("생성하기"):
+                new_deck_name = st.text_input("덱 이름 (예: 영어 기말고사, 일본어 기말고사)")
+               if st.form_submit_button("생성하기"):
                     if new_deck_name:
-                        supabase.table("decks").insert({"user_id": st.session_state.user.id, "name": new_deck_name}).execute()
-                        st.success(f"'{new_deck_name}' 덱 생성 완료!")
-                        st.rerun()
+                        try:
+                            supabase.table("decks").insert({"user_id": st.session_state.user.id, "name": new_deck_name}).execute()
+                            st.success(f"'{new_deck_name}' 덱 생성 완료!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"🚨 진짜 에러 원인: {e}")
         
         st.divider()
 
