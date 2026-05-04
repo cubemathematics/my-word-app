@@ -77,38 +77,45 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 if 'current_deck' not in st.session_state: st.session_state.current_deck = None
 if 'show_meaning' not in st.session_state: st.session_state.show_meaning = False
 
-# --- 4. 로그인 화면 (버그 수정 및 자동완성 적용) ---
+# --- 4. 로그인 화면 (자동완성 버그 & 두 번 클릭 완벽 해결) ---
 if st.session_state.user is None:
     st.markdown("<br><br><h1 style='text-align: center;'>🧠 SeonbuWords</h1>", unsafe_allow_html=True)
     choice = st.tabs(["🔑 로그인", "📝 회원가입"])
     
+    # [로그인 탭]
     with choice[0]:
-        # 💡 버그 수정: st.form 제거 및 autocomplete(자동완성) 속성 추가!
-        email = st.text_input("이메일 주소", key="login_email", autocomplete="email")
-        password = st.text_input("비밀번호", type="password", key="login_pw", autocomplete="current-password")
-        
-        if st.button("로그인", type="primary", use_container_width=True):
+        # 데이터를 한 번에 확실히 묶어서 서버로 던지는 st.form 사용
+        with st.form("login_form"):
+            email = st.text_input("이메일 주소", key="login_email", autocomplete="email")
+            password = st.text_input("비밀번호", type="password", key="login_pw", autocomplete="current-password")
+            submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
+            
+        # 버튼을 누른 '후'에 로직을 실행하도록 밖으로 뺐습니다! (두 번 클릭 문제 해결)
+        if submitted:
             if email and password:
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
                 except Exception as e: 
-                    st.error(f"로그인 실패: 이메일이나 비밀번호가 틀렸습니다.")
+                    st.error("로그인 실패: 이메일이나 비밀번호가 틀렸습니다.")
             else:
                 st.warning("이메일과 비밀번호를 모두 입력해주세요.")
 
+    # [회원가입 탭]
     with choice[1]:
-        new_email = st.text_input("새 이메일", key="signup_email", autocomplete="email")
-        new_password = st.text_input("비밀번호(6자 이상)", type="password", key="signup_pw", autocomplete="new-password")
-        
-        if st.button("회원가입 완료", type="primary", use_container_width=True):
+        with st.form("signup_form"):
+            new_email = st.text_input("새 이메일", key="signup_email", autocomplete="email")
+            new_password = st.text_input("비밀번호(6자 이상)", type="password", key="signup_pw", autocomplete="new-password")
+            signup_submitted = st.form_submit_button("회원가입 완료", type="primary", use_container_width=True)
+            
+        if signup_submitted:
             if new_email and len(new_password) >= 6:
                 try:
                     supabase.auth.sign_up({"email": new_email, "password": new_password})
                     st.success("🎉 가입 완료! 이제 왼쪽 '로그인' 탭에서 로그인해주세요.")
                 except Exception as e: 
-                    st.error(f"가입 실패: 이미 가입된 이메일입니다.")
+                    st.error("가입 실패: 이미 가입된 이메일이거나 오류가 발생했습니다.")
             else:
                 st.warning("이메일과 6자리 이상의 비밀번호를 입력해주세요.")
 
