@@ -21,10 +21,8 @@ except Exception as e: st.stop()
 
 # --- 2. 디자인 및 아이폰 앱 설정 ---
 def apply_apple_glass_design():
-    # 🚨 바로 이 부분에 아이폰(iOS) 사파리 전용 웹 앱 태그가 들어갑니다!
     st.markdown(
         """
-        <!-- 🍎 아이폰 바탕화면 앱 설정을 위한 메타 태그 -->
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta name="apple-mobile-web-app-title" content="SeonbuWords">
@@ -86,7 +84,7 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 if 'current_deck' not in st.session_state: st.session_state.current_deck = None
 if 'show_meaning' not in st.session_state: st.session_state.show_meaning = False
 
-# --- 4. 로그인 화면 (버그 수정 및 자동완성 적용) ---
+# --- 4. 로그인 화면 ---
 if st.session_state.user is None:
     st.markdown("<br><br><h1 style='text-align: center;'>🧠 SeonbuWords</h1>", unsafe_allow_html=True)
     choice = st.tabs(["🔑 로그인", "📝 회원가입"])
@@ -103,10 +101,8 @@ if st.session_state.user is None:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except Exception as e: 
-                    st.error("로그인 실패: 이메일이나 비밀번호가 틀렸습니다.")
-            else:
-                st.warning("이메일과 비밀번호를 모두 입력해주세요.")
+                except Exception: st.error("로그인 실패: 이메일이나 비밀번호가 틀렸습니다.")
+            else: st.warning("이메일과 비밀번호를 모두 입력해주세요.")
 
     with choice[1]:
         with st.form("signup_form"):
@@ -119,10 +115,8 @@ if st.session_state.user is None:
                 try:
                     supabase.auth.sign_up({"email": new_email, "password": new_password})
                     st.success("🎉 가입 완료! 이제 왼쪽 '로그인' 탭에서 로그인해주세요.")
-                except Exception as e: 
-                    st.error("가입 실패: 이미 가입된 이메일이거나 오류가 발생했습니다.")
-            else:
-                st.warning("이메일과 6자리 이상의 비밀번호를 입력해주세요.")
+                except Exception: st.error("가입 실패: 이미 가입된 이메일이거나 오류가 발생했습니다.")
+            else: st.warning("이메일과 6자리 이상의 비밀번호를 입력해주세요.")
 
 # --- 5. 메인 시스템 ---
 else:
@@ -153,8 +147,7 @@ else:
                             supabase.table("decks").insert({"user_id": st.session_state.user.id, "name": new_deck_name}).execute()
                             st.success(f"'{new_deck_name}' 덱 생성 완료!")
                             st.rerun()
-                        except Exception as e:
-                            st.error(f"🚨 생성 실패: {e}")
+                        except Exception as e: st.error(f"🚨 생성 실패: {e}")
         
         st.divider()
 
@@ -177,7 +170,9 @@ else:
                             st.rerun()
                     st.markdown("---")
 
-    # 화면 B: 단어 추가
+    # ==========================================
+    # 💡 업그레이드! 화면 B: 단어 추가 (수동 + CSV 대량 추가)
+    # ==========================================
     elif st.session_state.page == 'add':
         deck = st.session_state.current_deck
         st.markdown(f"<h2 style='text-align: center;'>[{deck['name']}] 단어 추가</h2>", unsafe_allow_html=True)
@@ -185,21 +180,62 @@ else:
         if st.button("⬅️ 뒤로 가기 (홈)", use_container_width=True):
             st.session_state.page = 'home'
             st.rerun()
+            
+        add_tabs = st.tabs(["✍️ 하나씩 추가", "📂 CSV 대량 추가"])
+        
+        # 탭 1: 수동 추가
+        with add_tabs[0]:
+            with st.form("add_word_form", clear_on_submit=True):
+                new_word = st.text_input("단어 (외국어)")
+                new_meaning = st.text_area("뜻 / 예문")
+                if st.form_submit_button("이 덱에 저장", type="primary", use_container_width=True):
+                    if new_word and new_meaning:
+                        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        supabase.table("words").insert({
+                            "user_id": st.session_state.user.id, "deck_id": deck['id'],
+                            "word": new_word, "meaning": new_meaning,
+                            "s": 0.5, "d": 5.0, "last_review": now_iso, "next_review": now_iso
+                        }).execute()
+                        st.success(f"'{new_word}' 저장 완료!")
+                    else: st.warning("단어와 뜻을 입력하세요.")
 
-        with st.form("add_word_form", clear_on_submit=True):
-            new_word = st.text_input("단어 (외국어)")
-            new_meaning = st.text_area("뜻 / 예문")
-            if st.form_submit_button("이 덱에 저장", type="primary", use_container_width=True):
-                if new_word and new_meaning:
-                    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    supabase.table("words").insert({
-                        "user_id": st.session_state.user.id,
-                        "deck_id": deck['id'],
-                        "word": new_word, "meaning": new_meaning,
-                        "s": 0.5, "d": 5.0, "last_review": now_iso, "next_review": now_iso
-                    }).execute()
-                    st.success("저장 완료!")
-                else: st.warning("단어와 뜻을 입력하세요.")
+        # 탭 2: CSV 대량 추가 (부활!)
+        with add_tabs[1]:
+            st.info("💡 **엑셀/스프레드시트 작성 방법:**\n1열(A열)에는 **단어**, 2열(B열)에는 **뜻**을 적고 `.csv` 형식으로 저장한 파일을 올려주세요.")
+            uploaded_file = st.file_uploader("CSV 파일 선택", type=["csv"])
+            
+            if st.button("🚀 대량 업로드 실행", type="primary", use_container_width=True):
+                if uploaded_file is not None:
+                    try:
+                        stringio = io.StringIO(uploaded_file.getvalue().decode("utf-8", errors='replace'))
+                        reader = csv.reader(stringio)
+                        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                        
+                        insert_data = []
+                        for row in reader:
+                            # 빈 줄 무시 및 데이터 추출
+                            if len(row) >= 2:
+                                word = row[0].strip()
+                                meaning = row[1].strip()
+                                if word and meaning:
+                                    insert_data.append({
+                                        "user_id": st.session_state.user.id, "deck_id": deck['id'],
+                                        "word": word, "meaning": meaning,
+                                        "s": 0.5, "d": 5.0, "last_review": now_iso, "next_review": now_iso
+                                    })
+                        
+                        if insert_data:
+                            # Supabase에 한 번에 묶어서 전송 (속도 훨씬 빠름!)
+                            supabase.table("words").insert(insert_data).execute()
+                            st.success(f"🎉 총 {len(insert_data)}개의 단어가 [{deck['name']}] 덱에 성공적으로 추가되었습니다!")
+                            st.balloons()
+                        else:
+                            st.warning("단어를 찾지 못했습니다. 파일에 단어와 뜻이 적혀 있는지 확인해 주세요.")
+                            
+                    except Exception as e:
+                        st.error(f"🚨 업로드 중 오류 발생: {e}")
+                else:
+                    st.warning("먼저 CSV 파일을 선택해 주세요.")
 
     # 화면 C: 단어 학습
     elif st.session_state.page == 'study':
