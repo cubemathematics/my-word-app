@@ -6,6 +6,7 @@ import csv
 from gtts import gTTS
 from supabase import create_client, Client
 
+# --- 페이지 기본 설정 ---
 st.set_page_config(page_title="선부고 스마트 단어장 - SeonbuWords", layout="centered", page_icon="🧠")
 
 # --- 1. DB 연결 ---
@@ -18,10 +19,17 @@ def init_connection():
 try: supabase = init_connection()
 except Exception as e: st.stop()
 
-# --- 2. 디자인 ---
+# --- 2. 디자인 및 아이폰 앱 설정 ---
 def apply_apple_glass_design():
+    # 🚨 바로 이 부분에 아이폰(iOS) 사파리 전용 웹 앱 태그가 들어갑니다!
     st.markdown(
-        """<style>
+        """
+        <!-- 🍎 아이폰 바탕화면 앱 설정을 위한 메타 태그 -->
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="SeonbuWords">
+        
+        <style>
         .stApp { background-color: #f2f4f7; }
         .glass-card {
             background: rgba(255, 255, 255, 0.4); box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05); 
@@ -33,7 +41,8 @@ def apply_apple_glass_design():
             border-radius: 16px !important; color: #1d1d1f !important; font-weight: 600 !important;
         }
         div.stButton > button[kind="primary"] { background: rgba(0, 122, 255, 0.85) !important; color: white !important; }
-        </style>""", unsafe_allow_html=True
+        </style>
+        """, unsafe_allow_html=True
     )
 apply_apple_glass_design()
 
@@ -77,20 +86,17 @@ if 'page' not in st.session_state: st.session_state.page = 'home'
 if 'current_deck' not in st.session_state: st.session_state.current_deck = None
 if 'show_meaning' not in st.session_state: st.session_state.show_meaning = False
 
-# --- 4. 로그인 화면 (자동완성 버그 & 두 번 클릭 완벽 해결) ---
+# --- 4. 로그인 화면 (버그 수정 및 자동완성 적용) ---
 if st.session_state.user is None:
     st.markdown("<br><br><h1 style='text-align: center;'>🧠 SeonbuWords</h1>", unsafe_allow_html=True)
     choice = st.tabs(["🔑 로그인", "📝 회원가입"])
     
-    # [로그인 탭]
     with choice[0]:
-        # 데이터를 한 번에 확실히 묶어서 서버로 던지는 st.form 사용
         with st.form("login_form"):
             email = st.text_input("이메일 주소", key="login_email", autocomplete="email")
             password = st.text_input("비밀번호", type="password", key="login_pw", autocomplete="current-password")
             submitted = st.form_submit_button("로그인", type="primary", use_container_width=True)
             
-        # 버튼을 누른 '후'에 로직을 실행하도록 밖으로 뺐습니다! (두 번 클릭 문제 해결)
         if submitted:
             if email and password:
                 try:
@@ -102,7 +108,6 @@ if st.session_state.user is None:
             else:
                 st.warning("이메일과 비밀번호를 모두 입력해주세요.")
 
-    # [회원가입 탭]
     with choice[1]:
         with st.form("signup_form"):
             new_email = st.text_input("새 이메일", key="signup_email", autocomplete="email")
@@ -141,7 +146,7 @@ else:
         
         with st.expander("➕ 새 덱(단어장) 만들기", expanded=not st.session_state.decks):
             with st.form("new_deck_form", clear_on_submit=True):
-                new_deck_name = st.text_input("덱 이름 (예: 영어 기말고사 단어장, 영독작 수행 단어장)")
+                new_deck_name = st.text_input("덱 이름 (예: TORFL 러시아어, 학교 내신 영어)")
                 if st.form_submit_button("생성하기"):
                     if new_deck_name:
                         try:
