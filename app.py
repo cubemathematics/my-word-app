@@ -39,12 +39,10 @@ apply_apple_glass_design()
 
 # --- 3. 핵심 데이터 로직 ---
 def fetch_user_decks():
-    """로그인한 유저의 모든 덱 가져오기"""
     res = supabase.table("decks").select("*").eq("user_id", st.session_state.user.id).execute()
     return res.data
 
 def fetch_words_for_deck(deck_id):
-    """선택한 덱의 단어만 가져오기"""
     res = supabase.table("words").select("*").eq("deck_id", deck_id).execute()
     data = res.data
     for w in data:
@@ -75,40 +73,49 @@ def update_memory_state(grade, s_old, d_old, r):
 
 # --- 세션 초기화 ---
 if 'user' not in st.session_state: st.session_state.user = None
-if 'page' not in st.session_state: st.session_state.page = 'home' # 기본 화면은 홈(덱 목록)
+if 'page' not in st.session_state: st.session_state.page = 'home'
 if 'current_deck' not in st.session_state: st.session_state.current_deck = None
 if 'show_meaning' not in st.session_state: st.session_state.show_meaning = False
 
-# --- 4. 로그인 화면 ---
+# --- 4. 로그인 화면 (버그 수정 및 자동완성 적용) ---
 if st.session_state.user is None:
     st.markdown("<br><br><h1 style='text-align: center;'>🧠 SeonbuWords</h1>", unsafe_allow_html=True)
     choice = st.tabs(["🔑 로그인", "📝 회원가입"])
+    
     with choice[0]:
-        with st.form("login"):
-            email = st.text_input("이메일")
-            password = st.text_input("비밀번호", type="password")
-            if st.form_submit_button("로그인", type="primary", use_container_width=True):
+        # 💡 버그 수정: st.form 제거 및 autocomplete(자동완성) 속성 추가!
+        email = st.text_input("이메일 주소", key="login_email", autocomplete="email")
+        password = st.text_input("비밀번호", type="password", key="login_pw", autocomplete="current-password")
+        
+        if st.button("로그인", type="primary", use_container_width=True):
+            if email and password:
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except: st.error("로그인 실패")
+                except Exception as e: 
+                    st.error(f"로그인 실패: 이메일이나 비밀번호가 틀렸습니다.")
+            else:
+                st.warning("이메일과 비밀번호를 모두 입력해주세요.")
+
     with choice[1]:
-        with st.form("signup"):
-            email = st.text_input("새 이메일")
-            password = st.text_input("비밀번호(6자 이상)", type="password")
-            if st.form_submit_button("회원가입", type="primary", use_container_width=True):
+        new_email = st.text_input("새 이메일", key="signup_email", autocomplete="email")
+        new_password = st.text_input("비밀번호(6자 이상)", type="password", key="signup_pw", autocomplete="new-password")
+        
+        if st.button("회원가입 완료", type="primary", use_container_width=True):
+            if new_email and len(new_password) >= 6:
                 try:
-                    supabase.auth.sign_up({"email": email, "password": password})
-                    st.success("가입 완료! 로그인해주세요.")
-                except Exception as e: st.error(f"실패: {e}")
+                    supabase.auth.sign_up({"email": new_email, "password": new_password})
+                    st.success("🎉 가입 완료! 이제 왼쪽 '로그인' 탭에서 로그인해주세요.")
+                except Exception as e: 
+                    st.error(f"가입 실패: 이미 가입된 이메일입니다.")
+            else:
+                st.warning("이메일과 6자리 이상의 비밀번호를 입력해주세요.")
 
 # --- 5. 메인 시스템 ---
 else:
-    # 덱 정보 최신화
     st.session_state.decks = fetch_user_decks()
 
-    # --- 사이드바 (전역 네비게이션) ---
     with st.sidebar:
         st.write(f"👤 **{st.session_state.user.email}**")
         if st.button("🚪 로그아웃", use_container_width=True):
@@ -121,13 +128,10 @@ else:
             st.session_state.current_deck = None
             st.rerun()
 
-  # ==========================================
-    # 화면 A: 홈 (덱 생성 및 목록)
-    # ==========================================
+    # 화면 A: 홈
     if st.session_state.page == 'home':
         st.markdown("<h2 style='text-align: center;'>🗂️ 내 단어장(덱) 목록</h2>", unsafe_allow_html=True)
         
-        # 1. 덱 만들기
         with st.expander("➕ 새 덱(단어장) 만들기", expanded=not st.session_state.decks):
             with st.form("new_deck_form", clear_on_submit=True):
                 new_deck_name = st.text_input("덱 이름 (예: TORFL 러시아어, 학교 내신 영어)")
@@ -138,16 +142,14 @@ else:
                             st.success(f"'{new_deck_name}' 덱 생성 완료!")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"🚨 진짜 에러 원인: {e}")
+                            st.error(f"🚨 생성 실패: {e}")
         
         st.divider()
 
-        # 2. 덱 목록 출력 및 선택
         if not st.session_state.decks:
             st.info("아직 만든 덱이 없습니다. 위에서 새 덱을 만들어보세요!")
         else:
             for deck in st.session_state.decks:
-                # 각 덱을 카드로 예쁘게 표시
                 with st.container():
                     st.markdown(f"### 📘 {deck['name']}")
                     col1, col2 = st.columns(2)
@@ -163,9 +165,7 @@ else:
                             st.rerun()
                     st.markdown("---")
 
-    # ==========================================
-    # 화면 B: 단어 추가하기 (특정 덱에 소속됨)
-    # ==========================================
+    # 화면 B: 단어 추가
     elif st.session_state.page == 'add':
         deck = st.session_state.current_deck
         st.markdown(f"<h2 style='text-align: center;'>[{deck['name']}] 단어 추가</h2>", unsafe_allow_html=True)
@@ -182,16 +182,14 @@ else:
                     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
                     supabase.table("words").insert({
                         "user_id": st.session_state.user.id,
-                        "deck_id": deck['id'], # 👈 이제 덱 ID로 정확히 연결됨!
+                        "deck_id": deck['id'],
                         "word": new_word, "meaning": new_meaning,
                         "s": 0.5, "d": 5.0, "last_review": now_iso, "next_review": now_iso
                     }).execute()
                     st.success("저장 완료!")
                 else: st.warning("단어와 뜻을 입력하세요.")
 
-    # ==========================================
-    # 화면 C: 단어 학습하기
-    # ==========================================
+    # 화면 C: 단어 학습
     elif st.session_state.page == 'study':
         deck = st.session_state.current_deck
         st.markdown(f"<h2 style='text-align: center;'>📚 [{deck['name']}] 학습 중</h2>", unsafe_allow_html=True)
