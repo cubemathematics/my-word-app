@@ -170,8 +170,7 @@ if st.session_state.user is None:
                         res = supabase.auth.sign_up({"email": new_email, "password": new_password})
                         st.success("🎉 가입이 완료되었습니다! 왼쪽의 '로그인' 탭에서 로그인해주세요.")
                     except Exception as e:
-                        st.error("가입 실패: 이미 존재하는 이메일이거나, 비밀번호가 너무 짧습니다.")
-
+                        st.error(f"🚨 진짜 에러 원인: {e}")
 # ==========================================
 # 📖 6. 메인 앱 화면 (로그인 성공 시)
 # ==========================================
